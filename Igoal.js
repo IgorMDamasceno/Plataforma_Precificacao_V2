@@ -92,7 +92,10 @@ function runIgoalPricingUpdate() {
       var companyIdRaw = idx.hasOwnProperty('company_id') ? String(row[idx['company_id']] || '').trim() : '';
       var priceRuleRaw = idx.hasOwnProperty('price_rule') ? row[idx['price_rule']] : '';
       var priceRule = normalizeIgoalPrice_(priceRuleRaw);
-      var utmSource = idx.hasOwnProperty('utm_source') ? String(row[idx['utm_source']] || '').trim() : '';
+      var utmSourceRaw = idx.hasOwnProperty('utm_source') ? row[idx['utm_source']] : '';
+      var utmSource = typeof normalizeIgoalUtmSourceValue_ === 'function'
+        ? normalizeIgoalUtmSourceValue_(utmSourceRaw)
+        : String(utmSourceRaw == null ? '' : utmSourceRaw).trim();
       var bloco = idx.hasOwnProperty('bloco') ? String(row[idx['bloco']] || '').trim() : '';
 
       if (!dominio || !urlPath || !companyIdRaw || !priceRule) {
@@ -130,6 +133,14 @@ function runIgoalPricingUpdate() {
           message = json && (json.data || json.message) ? (json.data || json.message) : 'Preço atualizado com sucesso.';
           if (syncIdx !== -1) {
             sheet.getRange(item.rowNum, syncIdx + 1).clearContent();
+          }
+          if (
+            idx.hasOwnProperty('utm_source') &&
+            idx['utm_source'] != null &&
+            String(row[idx['utm_source']] || '').trim() !== utmSource
+          ) {
+            sheet.getRange(item.rowNum, idx['utm_source'] + 1).setValue(utmSource);
+            row[idx['utm_source']] = utmSource;
           }
           logMessages.push('- ' + dominio + '/' + urlPath + ': OK! ' + message);
         } else {

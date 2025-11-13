@@ -275,6 +275,30 @@ function normSite_(val) {
   return String(val == null ? '' : val).trim().toLowerCase();
 }
 
+function normalizeIgoalUtmSourceValue_(value) {
+  if (value === undefined || value === null) return '';
+  var str = String(value).trim();
+  if (!str) return '';
+  var lower = str.toLowerCase();
+  var markerIndex = lower.indexOf('utm_source');
+  if (markerIndex !== -1) {
+    if (markerIndex > 0) {
+      var prevChar = lower.charAt(markerIndex - 1);
+      if (['?', '&', '#', '='].indexOf(prevChar) === -1 && !/\s/.test(prevChar)) {
+        return str;
+      }
+    }
+    var slice = str.substring(markerIndex + 'utm_source'.length);
+    slice = slice.replace(/^[^a-z0-9]+/i, '');
+    var stop = slice.search(/[&#]/);
+    if (stop !== -1) {
+      slice = slice.substring(0, stop);
+    }
+    str = slice.trim();
+  }
+  return str;
+}
+
 function normUtm_(val) {
   return String(val == null ? '' : val).trim().toLowerCase();
 }
@@ -339,9 +363,10 @@ function buildPricingPayloadLog_(networkKey, entry, ruleInfo, formattedRuleValue
       spnprice_id: coalesceForPayload_(ruleInfo.spnprice_id, entry.spnprice_id)
     };
   } else if (networkKey === 'igoal') {
+    var utmForIgoal = normalizeIgoalUtmSourceValue_(coalesceForPayload_(ruleInfo.utm_source, entry.utm_source));
     payload = {
       dominio: coalesceForPayload_(ruleInfo.dominio, ruleInfo.domain_id, entry.domain_id, entry.site),
-      utm_source: coalesceForPayload_(ruleInfo.utm_source, entry.utm_source),
+      utm_source: utmForIgoal,
       url: coalesceForPayload_(slugFromRule, slugFromEntry, slugFallback),
       bloco: coalesceForPayload_(ruleInfo.bloco, ruleInfo.slot_id, entry.bloco, entry.adunit),
       company_id: coalesceForPayload_(ruleInfo.company_id, entry.company_id, entry.identifier),
@@ -700,7 +725,8 @@ function getIgoalRuleContext_() {
   if (values.length) {
     values.forEach(function(row, index){
       var dominio = row[idx['dominio']];
-      var utm = row[idx['utm_source']];
+      var utmRaw = row[idx['utm_source']];
+      var utm = normalizeIgoalUtmSourceValue_(utmRaw);
       var url = row[idx['url']];
       var bloco = idx['bloco'] != null ? row[idx['bloco']] : '';
       if (!matchesAllowedAdUnitTokens_(bloco)) return;
@@ -1395,7 +1421,7 @@ function ensureRuleRowForEntry_(networkKey, ctx, entry, formattedValue, rawValue
     return info;
   } else if (networkKey === 'igoal') {
     var dominio = coalesceForPayload_(entry.site, entry.domain_id);
-    var utmIgoal = coalesceForPayload_(entry.utm_source);
+    var utmIgoal = normalizeIgoalUtmSourceValue_(coalesceForPayload_(entry.utm_source));
     var bloco = coalesceForPayload_(entry.bloco, entry.adunit);
     var slugIgoal = entry.normUrl || normUrlStrict_(entry.url);
     var companyId = coalesceForPayload_(entry.company_id, entry.identifier);
@@ -1442,6 +1468,7 @@ function ensureRuleRowForEntry_(networkKey, ctx, entry, formattedValue, rawValue
     ctx.map[entry.key] = infoIgoal;
     entry.domain_id = dominio;
     entry.company_id = companyId;
+    entry.utm_source = utmIgoal;
     entry.bloco = bloco;
     entry.wasRuleCreated = true;
     return infoIgoal;
@@ -1503,11 +1530,12 @@ function prepareRuleInfoForUpdate_(networkKey, ctx, entry, ruleInfo) {
       ruleInfo.normAdUnit = normAdUnit_(blocoValue);
     }
     if (blocoValue) entry.bloco = blocoValue;
-    var utmValueIgoal = coalesceForPayload_(ruleInfo.utm_source, entry.utm_source);
-    if (utmValueIgoal && idx['utm_source'] != null && String(ruleInfo.utm_source || '').trim() !== String(utmValueIgoal).trim()) {
+    var utmValueIgoal = normalizeIgoalUtmSourceValue_(coalesceForPayload_(ruleInfo.utm_source, entry.utm_source));
+    if (idx['utm_source'] != null && String(ruleInfo.utm_source || '').trim() !== String(utmValueIgoal).trim()) {
       sheet.getRange(ruleInfo.rowIndex, idx['utm_source'] + 1).setValue(utmValueIgoal);
       ruleInfo.utm_source = utmValueIgoal;
     }
+    entry.utm_source = utmValueIgoal;
     var urlValue = coalesceForPayload_(ruleInfo.url, entry.normUrl, normUrlStrict_(entry.url));
     if (urlValue && idx['url'] != null && String(ruleInfo.url || '').trim() !== String(urlValue).trim()) {
       sheet.getRange(ruleInfo.rowIndex, idx['url'] + 1).setValue(urlValue);
