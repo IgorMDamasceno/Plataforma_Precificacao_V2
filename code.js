@@ -134,7 +134,21 @@ function ensureAutoPricingLogSheet_() {
 function getHeaderIndexMap_(headers) {
   var map = {};
   for (var i = 0; i < headers.length; i++) {
-    map[String(headers[i]).trim()] = i;
+    var raw = String(headers[i] == null ? '' : headers[i]).trim();
+    if (!raw) continue;
+    if (!(raw in map)) {
+      map[raw] = i;
+    }
+    var lower = raw.toLowerCase();
+    if (!(lower in map)) {
+      map[lower] = i;
+    }
+    if (typeof normalizeHeaderName_ === 'function') {
+      var normalized = normalizeHeaderName_(raw);
+      if (normalized && !(normalized in map)) {
+        map[normalized] = i;
+      }
+    }
   }
   return map;
 }
@@ -205,6 +219,10 @@ function parseCoverageValue_(val) {
 }
 
 function formatPriceRuleIgoal_(value) {
+  if (typeof normalizeIgoalPrice_ === 'function') {
+    var normalized = normalizeIgoalPrice_(value);
+    return normalized != null ? String(normalized) : '';
+  }
   if (value === null || value === undefined) return '';
   var s = String(value).trim();
   if (!s) return '';
@@ -215,6 +233,11 @@ function formatPriceRuleIgoal_(value) {
 }
 
 function formatPriceRuleAdSeleto_(value) {
+  if (typeof normalizePmdPrice_ === 'function') {
+    var normalized = normalizePmdPrice_(value);
+    if (normalized == null || isNaN(normalized)) return '';
+    return Number(normalized).toFixed(2);
+  }
   if (value === null || value === undefined) return '';
   var s = String(value).trim();
   if (!s) return '';
@@ -250,6 +273,30 @@ function normUrlStrict_(u) {
 
 function normSite_(val) {
   return String(val == null ? '' : val).trim().toLowerCase();
+}
+
+function normalizeIgoalUtmSourceValue_(value) {
+  if (value === undefined || value === null) return '';
+  var str = String(value).trim();
+  if (!str) return '';
+  var lower = str.toLowerCase();
+  var markerIndex = lower.indexOf('utm_source');
+  if (markerIndex !== -1) {
+    if (markerIndex > 0) {
+      var prevChar = lower.charAt(markerIndex - 1);
+      if (['?', '&', '#', '='].indexOf(prevChar) === -1 && !/\s/.test(prevChar)) {
+        return str;
+      }
+    }
+    var slice = str.substring(markerIndex + 'utm_source'.length);
+    slice = slice.replace(/^[^a-z0-9]+/i, '');
+    var stop = slice.search(/[&#]/);
+    if (stop !== -1) {
+      slice = slice.substring(0, stop);
+    }
+    str = slice.trim();
+  }
+  return str;
 }
 
 function normUtm_(val) {
@@ -316,9 +363,10 @@ function buildPricingPayloadLog_(networkKey, entry, ruleInfo, formattedRuleValue
       spnprice_id: coalesceForPayload_(ruleInfo.spnprice_id, entry.spnprice_id)
     };
   } else if (networkKey === 'igoal') {
+    var utmForIgoal = normalizeIgoalUtmSourceValue_(coalesceForPayload_(ruleInfo.utm_source, entry.utm_source));
     payload = {
       dominio: coalesceForPayload_(ruleInfo.dominio, ruleInfo.domain_id, entry.domain_id, entry.site),
-      utm_source: coalesceForPayload_(ruleInfo.utm_source, entry.utm_source),
+      utm_source: utmForIgoal,
       url: coalesceForPayload_(slugFromRule, slugFromEntry, slugFallback),
       bloco: coalesceForPayload_(ruleInfo.bloco, ruleInfo.slot_id, entry.bloco, entry.adunit),
       company_id: coalesceForPayload_(ruleInfo.company_id, entry.company_id, entry.identifier),
@@ -677,12 +725,21 @@ function getIgoalRuleContext_() {
   if (values.length) {
     values.forEach(function(row, index){
       var dominio = row[idx['dominio']];
-      var utm = row[idx['utm_source']];
+      var utmRaw = row[idx['utm_source']];
+      var utm = normalizeIgoalUtmSourceValue_(utmRaw);
       var url = row[idx['url']];
       var bloco = idx['bloco'] != null ? row[idx['bloco']] : '';
       if (!matchesAllowedAdUnitTokens_(bloco)) return;
-      var key = normSite_(dominio) + '||' + normUtm_(utm) + '||' + normAdUnit_(bloco) + '||' + normUrlStrict_(url);
-      map[key] = {
+      var normSite = normSite_(dominio);
+      var normAdunit = normAdUnit_(bloco);
+      var normSlug = normUrlStrict_(url);
+      var normUtmSanitized = normUtm_(utm);
+      var normUtmRaw = normUtm_(utmRaw);
+      var keyVariants = [];
+      if (normUtmSanitized) keyVariants.push(normUtmSanitized);
+      if (normUtmRaw && normUtmRaw !== normUtmSanitized) keyVariants.push(normUtmRaw);
+      if (!keyVariants.length) keyVariants.push('');
+      var info = {
         price_rule: toNumber_(row[idx['price_rule']]),
         rowIndex: index + 2,
         dominio: dominio,
@@ -694,6 +751,10 @@ function getIgoalRuleContext_() {
         company_id: row[idx['company_id']],
         rule_id: row[idx['rule_id']]
       };
+      keyVariants.forEach(function(normUtmValue){
+        var key = normSite + '||' + normUtmValue + '||' + normAdunit + '||' + normSlug;
+        map[key] = info;
+      });
     });
   }
   return {
@@ -994,7 +1055,8 @@ function computeAutoPricingPlan_(params) {
     var ruleInfo = contextForNetwork ? contextForNetwork.map[key] : null;
     var currentRule = ruleInfo ? ruleInfo.price_rule : 0;
     var supportedNetwork = !!contextForNetwork;
-    var eligible = supportedNetwork && requests >= AUTO_PRICING_MIN_REQUESTS && bucketInfo.value != null;
+    var canSelect = supportedNetwork && bucketInfo.value != null;
+    var eligible = canSelect && requests >= AUTO_PRICING_MIN_REQUESTS;
     var shouldUpdate = eligible && !nearlyEqual_(currentRule, bucketInfo.value);
     var reason = '';
     if (!supportedNetwork) reason = 'Rede não suportada pela automação';
@@ -1032,6 +1094,7 @@ function computeAutoPricingPlan_(params) {
       eligible: eligible,
       shouldUpdate: shouldUpdate,
       reason: reason,
+      canSelect: canSelect,
       hoursUsed: Object.keys(agg.hours).map(function(ms){ return formatHourLabelAuto_(+ms); }).sort(),
       windowHours: windowHours.map(formatHourLabelAuto_)
     });
@@ -1084,6 +1147,7 @@ function computeAutoPricingPlan_(params) {
         eligible: false,
         shouldUpdate: false,
         reason: 'Sem dados nas últimas horas',
+        canSelect: false,
         hoursUsed: [],
         windowHours: windowHours.map(formatHourLabelAuto_)
       });
@@ -1372,7 +1436,7 @@ function ensureRuleRowForEntry_(networkKey, ctx, entry, formattedValue, rawValue
     return info;
   } else if (networkKey === 'igoal') {
     var dominio = coalesceForPayload_(entry.site, entry.domain_id);
-    var utmIgoal = coalesceForPayload_(entry.utm_source);
+    var utmIgoal = normalizeIgoalUtmSourceValue_(coalesceForPayload_(entry.utm_source));
     var bloco = coalesceForPayload_(entry.bloco, entry.adunit);
     var slugIgoal = entry.normUrl || normUrlStrict_(entry.url);
     var companyId = coalesceForPayload_(entry.company_id, entry.identifier);
@@ -1419,6 +1483,7 @@ function ensureRuleRowForEntry_(networkKey, ctx, entry, formattedValue, rawValue
     ctx.map[entry.key] = infoIgoal;
     entry.domain_id = dominio;
     entry.company_id = companyId;
+    entry.utm_source = utmIgoal;
     entry.bloco = bloco;
     entry.wasRuleCreated = true;
     return infoIgoal;
@@ -1480,11 +1545,12 @@ function prepareRuleInfoForUpdate_(networkKey, ctx, entry, ruleInfo) {
       ruleInfo.normAdUnit = normAdUnit_(blocoValue);
     }
     if (blocoValue) entry.bloco = blocoValue;
-    var utmValueIgoal = coalesceForPayload_(ruleInfo.utm_source, entry.utm_source);
-    if (utmValueIgoal && idx['utm_source'] != null && String(ruleInfo.utm_source || '').trim() !== String(utmValueIgoal).trim()) {
+    var utmValueIgoal = normalizeIgoalUtmSourceValue_(coalesceForPayload_(ruleInfo.utm_source, entry.utm_source));
+    if (idx['utm_source'] != null && String(ruleInfo.utm_source || '').trim() !== String(utmValueIgoal).trim()) {
       sheet.getRange(ruleInfo.rowIndex, idx['utm_source'] + 1).setValue(utmValueIgoal);
       ruleInfo.utm_source = utmValueIgoal;
     }
+    entry.utm_source = utmValueIgoal;
     var urlValue = coalesceForPayload_(ruleInfo.url, entry.normUrl, normUrlStrict_(entry.url));
     if (urlValue && idx['url'] != null && String(ruleInfo.url || '').trim() !== String(urlValue).trim()) {
       sheet.getRange(ruleInfo.rowIndex, idx['url'] + 1).setValue(urlValue);
@@ -1515,21 +1581,38 @@ function runAutoPricing(params) {
       selectedSet[String(key)] = true;
     });
   }
+  var ruleContexts = plan.ruleContexts || {};
   var updates = plan.analysis.entries.filter(function(entry){
+    if (!entry || !entry.key) return false;
+    var canSelect = entry.canSelect !== false;
+    if (selectedSet) {
+      if (!selectedSet[entry.key]) return false;
+      if (!canSelect) return false;
+      var ctx = ruleContexts[entry.normNetwork];
+      if (!ctx || !ctx.map) return false;
+      if (entry.bucketRule == null) return false;
+      entry.forceUpdate = !entry.shouldUpdate;
+      return true;
+    }
     if (!entry.shouldUpdate) return false;
-    if (selectedSet && !selectedSet[entry.key]) return false;
+    if (!canSelect) return false;
     return true;
   });
   if (!updates.length) {
+    var manualAttempt = selectedSet && Object.keys(selectedSet).length;
     return {
       ok: true,
       updated: 0,
-      message: 'Nenhuma atualização necessária.',
+      message: manualAttempt ? 'Nenhuma atualização válida para as URLs selecionadas.' : 'Nenhuma atualização necessária.',
       state: planToState_(plan)
     };
   }
 
-  var ruleContexts = plan.ruleContexts || {};
+  var triggeredNetworks = {};
+  updates.forEach(function(entry){
+    if (!entry || !entry.normNetwork) return;
+    triggeredNetworks[entry.normNetwork] = true;
+  });
   var tz = Session.getScriptTimeZone();
   var timestamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
   var logSheet = ensureAutoPricingLogSheet_();
@@ -1567,6 +1650,9 @@ function runAutoPricing(params) {
       }
       ruleInfo.price_rule = newValue;
       var actionNote = entry.wasRuleCreated ? 'Regra criada via automação (Bloco: ' + (entry.adunit || '-') + ')' : 'Atualizado via automação (Bloco: ' + (entry.adunit || '-') + ')';
+      if (entry.forceUpdate) {
+        actionNote += ' (atualização manual forçada)';
+      }
       logRows.push([timestamp, params.trigger, entry.site, entry.network, entry.utm_source, entry.url, previousRule, newValue, entry.coverage, entry.ecpm, entry.coefficient, entry.bucketLabel, entry.requests, actionNote, payloadLog]);
     });
   });
@@ -1581,11 +1667,50 @@ function runAutoPricing(params) {
     range.setValues(payload);
   }
 
+  var syncSummaries = [];
+  function pushSyncSummary(label, result) {
+    var header = '[' + label + '] ';
+    if (!result) {
+      syncSummaries.push(header + 'Sincronização concluída.');
+      return;
+    }
+    var ok = result.ok !== false;
+    var message = typeof result.message === 'string' ? result.message : '';
+    if (!message) {
+      message = ok ? 'Sincronização concluída.' : 'Falha ao sincronizar.';
+    }
+    syncSummaries.push(header + (ok ? 'OK' : 'ERRO') + '\n' + message);
+  }
+
+  function runNetworkSync(label, fn) {
+    if (typeof fn !== 'function') {
+      syncSummaries.push('[' + label + '] Função de sincronização indisponível.');
+      return;
+    }
+    try {
+      var result = fn();
+      pushSyncSummary(label, result);
+    } catch (err) {
+      syncSummaries.push('[' + label + '] ERRO\n' + (err && err.message ? err.message : 'Falha desconhecida.'));
+    }
+  }
+
+  if (triggeredNetworks['adseleto']) {
+    runNetworkSync('AdSeleto', runAdSeletoPricingUpdate);
+  }
+  if (triggeredNetworks['igoal']) {
+    runNetworkSync('Igoal', runIgoalPricingUpdate);
+  }
+
   var refreshed = computeAutoPricingPlan_(params);
+  var baseMessage = 'Precificação aplicada para ' + logRows.length + ' itens.';
+  if (syncSummaries.length) {
+    baseMessage += '\n\n' + syncSummaries.join('\n\n');
+  }
   return {
     ok: true,
     updated: logRows.length,
-    message: 'Precificação aplicada para ' + logRows.length + ' itens.',
+    message: baseMessage,
     state: planToState_(refreshed)
   };
 }

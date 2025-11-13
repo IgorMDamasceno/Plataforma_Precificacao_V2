@@ -8,9 +8,46 @@ function buildIgoalApiUrl_() {
   return IGOAL_API_BASE_URL.replace(/\/$/, '') + IGOAL_API_ENDPOINT;
 }
 
+function normalizeIgoalPrice_(value) {
+  if (value == null) return '';
+  if (typeof value === 'number') return isNaN(value) ? '' : value.toFixed(2);
+  var str = String(value).trim();
+  if (!str) return '';
+  str = str.replace(/\s/g, '').replace(/%/g, '');
+  var comma = str.indexOf(',');
+  var dot = str.indexOf('.');
+  if (comma !== -1 && dot !== -1) {
+    if (comma > dot) {
+      str = str.replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  } else if (comma !== -1) {
+    str = str.replace(/\./g, '').replace(/,/g, '.');
+  } else {
+    str = str.replace(/,/g, '');
+  }
+  var numeric = parseFloat(str);
+  if (isNaN(numeric)) return '';
+  return numeric.toFixed(2);
+}
+
+function shouldSyncIgoalRow_(rowValue, syncColumnIndex) {
+  if (syncColumnIndex === -1) return true;
+  var raw = rowValue == null ? '' : String(rowValue).trim().toLowerCase();
+  if (!raw) return true;
+  return ['sim', 'yes', 'y'].indexOf(raw) !== -1;
+}
+
 function runIgoalPricingUpdate() {
   try {
-    var sheet = ensurePricingSheetIgoal_();
+    var sheet = typeof ensurePricingSheetIgoal_ === 'function'
+      ? ensurePricingSheetIgoal_()
+      : SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Precificação - Igoal');
+    if (!sheet) {
+      throw new Error('A aba "Precificação - Igoal" não foi encontrada.');
+    }
+
     var data = sheet.getDataRange().getValues();
     if (!data || data.length < 2) {
       return { ok: true, message: 'Nenhuma regra para sincronizar na Igoal.' };
@@ -18,21 +55,31 @@ function runIgoalPricingUpdate() {
 
     var headers = data[0] || [];
     var idx = getHeaderIndexMap_(headers);
-    var syncIdx = headers.indexOf('Sincronizar');
-    if (syncIdx === -1) {
-      throw new Error("A coluna 'Sincronizar' não foi encontrada na aba de precificação da Igoal.");
+    var requiredHeaders = ['dominio', 'url', 'company_id', 'price_rule'];
+    var missingHeaders = requiredHeaders.filter(function(name) { return !(name in idx); });
+    if (missingHeaders.length) {
+      throw new Error('Colunas obrigatórias ausentes na planilha da Igoal: ' + missingHeaders.join(', '));
+    }
+    var syncIdx = -1;
+    if ('Sincronizar' in idx) {
+      syncIdx = idx['Sincronizar'];
+    } else if ('sincronizar' in idx) {
+      syncIdx = idx['sincronizar'];
+    } else {
+      syncIdx = headers.indexOf('Sincronizar');
     }
 
     var rowsToSync = [];
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
-      var shouldSync = String(row[syncIdx] || '').toLowerCase() === 'sim';
-      if (!shouldSync) continue;
+      if (!shouldSyncIgoalRow_(syncIdx === -1 ? '' : row[syncIdx], syncIdx)) {
+        continue;
+      }
       rowsToSync.push({ row: row, rowNum: i + 1 });
     }
 
     if (!rowsToSync.length) {
-      return { ok: true, message: 'Nenhuma regra marcada para sincronização na Igoal.' };
+      return { ok: true, message: 'Nenhuma regra válida para sincronizar na Igoal.' };
     }
 
     var logMessages = [];
@@ -40,15 +87,19 @@ function runIgoalPricingUpdate() {
 
     rowsToSync.forEach(function(item) {
       var row = item.row;
-      var dominio = String(row[idx['dominio']] || '').trim();
-      var urlPath = String(row[idx['url']] || '').trim();
-      var companyIdRaw = String(row[idx['company_id']] || '').trim();
-      var priceRule = String(row[idx['price_rule']] || '').trim();
-      var utmSource = String(row[idx['utm_source']] || '').trim();
-      var bloco = String(row[idx['bloco']] || '').trim();
+      var dominio = idx.hasOwnProperty('dominio') ? String(row[idx['dominio']] || '').trim() : '';
+      var urlPath = idx.hasOwnProperty('url') ? String(row[idx['url']] || '').trim() : '';
+      var companyIdRaw = idx.hasOwnProperty('company_id') ? String(row[idx['company_id']] || '').trim() : '';
+      var priceRuleRaw = idx.hasOwnProperty('price_rule') ? row[idx['price_rule']] : '';
+      var priceRule = normalizeIgoalPrice_(priceRuleRaw);
+      var utmSourceRaw = idx.hasOwnProperty('utm_source') ? row[idx['utm_source']] : '';
+      var utmSource = typeof normalizeIgoalUtmSourceValue_ === 'function'
+        ? normalizeIgoalUtmSourceValue_(utmSourceRaw)
+        : String(utmSourceRaw == null ? '' : utmSourceRaw).trim();
+      var bloco = idx.hasOwnProperty('bloco') ? String(row[idx['bloco']] || '').trim() : '';
 
       if (!dominio || !urlPath || !companyIdRaw || !priceRule) {
-        logMessages.push('- ' + dominio + '/' + urlPath + ': ERRO! Campos obrigatórios ausentes.');
+        logMessages.push('- ' + (dominio || '(domínio vazio)') + '/' + (urlPath || '(url vazia)') + ': ERRO! Campos obrigatórios ausentes ou inválidos.');
         return;
       }
 
@@ -57,7 +108,7 @@ function runIgoalPricingUpdate() {
         dominio: dominio,
         url: urlPath,
         company_id: isNaN(companyIdValue) ? companyIdRaw : companyIdValue,
-        price_rule: priceRule
+        price_rule: priceRule,
       };
       if (utmSource) payload.utm_source = utmSource;
       if (bloco) payload.bloco = bloco;
@@ -68,7 +119,7 @@ function runIgoalPricingUpdate() {
           contentType: 'application/json',
           muteHttpExceptions: true,
           payload: JSON.stringify(payload),
-          headers: { Authorization: IGOAL_API_TOKEN }
+          headers: { Authorization: IGOAL_API_TOKEN },
         });
 
         var statusCode = response.getResponseCode();
@@ -80,7 +131,17 @@ function runIgoalPricingUpdate() {
         var message = '';
         if (success) {
           message = json && (json.data || json.message) ? (json.data || json.message) : 'Preço atualizado com sucesso.';
-          sheet.getRange(item.rowNum, syncIdx + 1).clearContent();
+          if (syncIdx !== -1) {
+            sheet.getRange(item.rowNum, syncIdx + 1).clearContent();
+          }
+          if (
+            idx.hasOwnProperty('utm_source') &&
+            idx['utm_source'] != null &&
+            String(row[idx['utm_source']] || '').trim() !== utmSource
+          ) {
+            sheet.getRange(item.rowNum, idx['utm_source'] + 1).setValue(utmSource);
+            row[idx['utm_source']] = utmSource;
+          }
           logMessages.push('- ' + dominio + '/' + urlPath + ': OK! ' + message);
         } else {
           message = json && (json.data || json.message) ? (json.data || json.message) : (raw || ('Erro HTTP ' + statusCode));
