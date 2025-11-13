@@ -730,8 +730,16 @@ function getIgoalRuleContext_() {
       var url = row[idx['url']];
       var bloco = idx['bloco'] != null ? row[idx['bloco']] : '';
       if (!matchesAllowedAdUnitTokens_(bloco)) return;
-      var key = normSite_(dominio) + '||' + normUtm_(utm) + '||' + normAdUnit_(bloco) + '||' + normUrlStrict_(url);
-      map[key] = {
+      var normSite = normSite_(dominio);
+      var normAdunit = normAdUnit_(bloco);
+      var normSlug = normUrlStrict_(url);
+      var normUtmSanitized = normUtm_(utm);
+      var normUtmRaw = normUtm_(utmRaw);
+      var keyVariants = [];
+      if (normUtmSanitized) keyVariants.push(normUtmSanitized);
+      if (normUtmRaw && normUtmRaw !== normUtmSanitized) keyVariants.push(normUtmRaw);
+      if (!keyVariants.length) keyVariants.push('');
+      var info = {
         price_rule: toNumber_(row[idx['price_rule']]),
         rowIndex: index + 2,
         dominio: dominio,
@@ -743,6 +751,10 @@ function getIgoalRuleContext_() {
         company_id: row[idx['company_id']],
         rule_id: row[idx['rule_id']]
       };
+      keyVariants.forEach(function(normUtmValue){
+        var key = normSite + '||' + normUtmValue + '||' + normAdunit + '||' + normSlug;
+        map[key] = info;
+      });
     });
   }
   return {
@@ -1043,7 +1055,8 @@ function computeAutoPricingPlan_(params) {
     var ruleInfo = contextForNetwork ? contextForNetwork.map[key] : null;
     var currentRule = ruleInfo ? ruleInfo.price_rule : 0;
     var supportedNetwork = !!contextForNetwork;
-    var eligible = supportedNetwork && requests >= AUTO_PRICING_MIN_REQUESTS && bucketInfo.value != null;
+    var canSelect = supportedNetwork && bucketInfo.value != null;
+    var eligible = canSelect && requests >= AUTO_PRICING_MIN_REQUESTS;
     var shouldUpdate = eligible && !nearlyEqual_(currentRule, bucketInfo.value);
     var reason = '';
     if (!supportedNetwork) reason = 'Rede não suportada pela automação';
@@ -1081,6 +1094,7 @@ function computeAutoPricingPlan_(params) {
       eligible: eligible,
       shouldUpdate: shouldUpdate,
       reason: reason,
+      canSelect: canSelect,
       hoursUsed: Object.keys(agg.hours).map(function(ms){ return formatHourLabelAuto_(+ms); }).sort(),
       windowHours: windowHours.map(formatHourLabelAuto_)
     });
@@ -1133,6 +1147,7 @@ function computeAutoPricingPlan_(params) {
         eligible: false,
         shouldUpdate: false,
         reason: 'Sem dados nas últimas horas',
+        canSelect: false,
         hoursUsed: [],
         windowHours: windowHours.map(formatHourLabelAuto_)
       });
@@ -1566,21 +1581,33 @@ function runAutoPricing(params) {
       selectedSet[String(key)] = true;
     });
   }
+  var ruleContexts = plan.ruleContexts || {};
   var updates = plan.analysis.entries.filter(function(entry){
+    if (!entry || !entry.key) return false;
+    var canSelect = entry.canSelect !== false;
+    if (selectedSet) {
+      if (!selectedSet[entry.key]) return false;
+      if (!canSelect) return false;
+      var ctx = ruleContexts[entry.normNetwork];
+      if (!ctx || !ctx.map) return false;
+      if (entry.bucketRule == null) return false;
+      entry.forceUpdate = !entry.shouldUpdate;
+      return true;
+    }
     if (!entry.shouldUpdate) return false;
-    if (selectedSet && !selectedSet[entry.key]) return false;
+    if (!canSelect) return false;
     return true;
   });
   if (!updates.length) {
+    var manualAttempt = selectedSet && Object.keys(selectedSet).length;
     return {
       ok: true,
       updated: 0,
-      message: 'Nenhuma atualização necessária.',
+      message: manualAttempt ? 'Nenhuma atualização válida para as URLs selecionadas.' : 'Nenhuma atualização necessária.',
       state: planToState_(plan)
     };
   }
 
-  var ruleContexts = plan.ruleContexts || {};
   var triggeredNetworks = {};
   updates.forEach(function(entry){
     if (!entry || !entry.normNetwork) return;
@@ -1623,6 +1650,9 @@ function runAutoPricing(params) {
       }
       ruleInfo.price_rule = newValue;
       var actionNote = entry.wasRuleCreated ? 'Regra criada via automação (Bloco: ' + (entry.adunit || '-') + ')' : 'Atualizado via automação (Bloco: ' + (entry.adunit || '-') + ')';
+      if (entry.forceUpdate) {
+        actionNote += ' (atualização manual forçada)';
+      }
       logRows.push([timestamp, params.trigger, entry.site, entry.network, entry.utm_source, entry.url, previousRule, newValue, entry.coverage, entry.ecpm, entry.coefficient, entry.bucketLabel, entry.requests, actionNote, payloadLog]);
     });
   });

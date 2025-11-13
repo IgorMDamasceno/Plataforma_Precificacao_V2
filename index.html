@@ -602,7 +602,8 @@
       var selection = AutoPricing.selectedEntries || {};
       var available = {};
       (AutoPricing.analysis && AutoPricing.analysis.entries ? AutoPricing.analysis.entries : []).forEach(function(entry){
-        if (!entry || !entry.key || !entry.shouldUpdate) return;
+        if (!entry || !entry.key) return;
+        if (entry.canSelect === false) return;
         available[String(entry.key)] = true;
       });
       var next = {};
@@ -614,11 +615,49 @@
       AutoPricing.selectedEntries = next;
     }
 
+    function syncAutoSelectAllControl(){
+      var container = byId('auto-analysis-utm');
+      if (!container) return;
+      var master = container.querySelector('#auto-entry-select-all');
+      if (!master) return;
+      var checkboxes = Array.prototype.slice.call(container.querySelectorAll('input.auto-entry-select'));
+      var enabled = checkboxes.filter(function(box){ return box && !box.disabled; });
+      if (!enabled.length) {
+        master.checked = false;
+        master.indeterminate = false;
+        master.disabled = true;
+        return;
+      }
+      master.disabled = false;
+      var selectedCount = 0;
+      enabled.forEach(function(box){
+        var key = box.getAttribute('data-key');
+        if (!key) return;
+        var isSelected = !!(AutoPricing.selectedEntries && AutoPricing.selectedEntries[key]);
+        box.checked = isSelected;
+        if (isSelected) selectedCount++;
+      });
+      if (selectedCount === 0) {
+        master.checked = false;
+        master.indeterminate = false;
+      } else if (selectedCount === enabled.length) {
+        master.checked = true;
+        master.indeterminate = false;
+      } else {
+        master.checked = false;
+        master.indeterminate = true;
+      }
+    }
+
     function describeAutoPricingStatus(entry){
       if (!entry) return { label: '—', className: 'text-slate-300' };
       if (entry.shouldUpdate) {
         var bucketLabel = entry.bucketRule != null ? money(entry.bucketRule) : '—';
         return { label: 'Atualizar para ' + bucketLabel, className: 'text-emerald-400 font-semibold' };
+      }
+      if (entry.canSelect !== false && entry.bucketRule != null) {
+        var manualLabel = entry.reason ? (escapeHtml(entry.reason) + ' — disponível para forçar') : 'Disponível para atualização manual';
+        return { label: manualLabel, className: 'text-sky-300' };
       }
       if (!entry.eligible) {
         return { label: escapeHtml(entry.reason || 'Não elegível'), className: 'text-amber-300' };
@@ -698,14 +737,17 @@
             var status = describeAutoPricingStatus(entry);
             var network = entry.network ? escapeHtml(entry.network) : '—';
             var attrs = ['type="checkbox"', 'class="auto-entry-select h-4 w-4 text-emerald-500 rounded border-slate-600 bg-slate-800"', 'data-key="'+escapeHtml(entry.key || '')+'"', 'aria-label="Selecionar URL"'];
-            if (AutoPricing.selectedEntries && AutoPricing.selectedEntries[entry.key]) {
+            var selectable = entry.canSelect !== false;
+            if (AutoPricing.selectedEntries && AutoPricing.selectedEntries[entry.key] && selectable) {
               attrs.push('checked');
             }
-            if (!entry.shouldUpdate) {
+            if (!selectable) {
               attrs.push('disabled');
               if (entry.reason) {
                 attrs.push('title="'+escapeHtml(entry.reason)+'"');
               }
+            } else if (entry.reason && !entry.shouldUpdate) {
+              attrs.push('title="'+escapeHtml(entry.reason)+'"');
             }
             var checkbox = '<input '+attrs.join(' ')+' />';
             return '<tr>'+
@@ -724,9 +766,11 @@
               '<td class="py-2 px-2"><span class="'+status.className+'">'+status.label+'</span></td>'+
             '</tr>';
           }).join('');
-          detailHtml = '<div class="pt-4 border-t border-slate-700/50 space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><h4 class="text-sm font-semibold text-slate-200">Detalhe por URL</h4><p class="text-xs text-slate-400">Marque as URLs que deseja sincronizar manualmente.</p></div><div class="overflow-auto"><table class="w-full text-sm pricing-table"><thead class="text-slate-400"><tr><th class="text-center font-semibold py-2 px-2 w-14">Selecionar</th><th class="text-left font-semibold py-2 px-2">Site</th><th class="text-left font-semibold py-2 px-2">utm_source</th><th class="text-left font-semibold py-2 px-2">Rede</th><th class="text-left font-semibold py-2 px-2">Bloco</th><th class="text-left font-semibold py-2 px-2">URL</th><th class="text-right font-semibold py-2 px-2">Solicitações</th><th class="text-right font-semibold py-2 px-2">Cobertura</th><th class="text-right font-semibold py-2 px-2">eCPM</th><th class="text-right font-semibold py-2 px-2">Coeficiente</th><th class="text-right font-semibold py-2 px-2">Regra atual</th><th class="text-right font-semibold py-2 px-2">Nova regra</th><th class="text-left font-semibold py-2 px-2">Status</th></tr></thead><tbody>'+detailTable+'</tbody></table></div></div>';
+          var selectAllControl = '<div class="flex flex-col items-center gap-1 text-[11px] leading-tight text-slate-300"><span class="uppercase tracking-wide">Selecionar</span><input type="checkbox" id="auto-entry-select-all" class="h-4 w-4 text-emerald-500 rounded border-slate-600 bg-slate-800" aria-label="Selecionar todas as URLs" /></div>';
+          detailHtml = '<div class="pt-4 border-t border-slate-700/50 space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><h4 class="text-sm font-semibold text-slate-200">Detalhe por URL</h4><p class="text-xs text-slate-400">Marque as URLs que deseja sincronizar manualmente.</p></div><div class="overflow-auto"><table class="w-full text-sm pricing-table"><thead class="text-slate-400"><tr><th class="text-center font-semibold py-2 px-2 w-20">'+selectAllControl+'</th><th class="text-left font-semibold py-2 px-2">Site</th><th class="text-left font-semibold py-2 px-2">utm_source</th><th class="text-left font-semibold py-2 px-2">Rede</th><th class="text-left font-semibold py-2 px-2">Bloco</th><th class="text-left font-semibold py-2 px-2">URL</th><th class="text-right font-semibold py-2 px-2">Solicitações</th><th class="text-right font-semibold py-2 px-2">Cobertura</th><th class="text-right font-semibold py-2 px-2">eCPM</th><th class="text-right font-semibold py-2 px-2">Coeficiente</th><th class="text-right font-semibold py-2 px-2">Regra atual</th><th class="text-right font-semibold py-2 px-2">Nova regra</th><th class="text-left font-semibold py-2 px-2">Status</th></tr></thead><tbody>'+detailTable+'</tbody></table></div></div>';
         }
         utmContainer.innerHTML = aggregatedHtml + detailHtml;
+        syncAutoSelectAllControl();
       }
     }
 
@@ -911,7 +955,27 @@
       if (analysisContainer) {
         analysisContainer.addEventListener('change', function(event){
           var target = event && event.target;
-          if (!target || !target.classList || !target.classList.contains('auto-entry-select')) return;
+          if (!target) return;
+          if (target.id === 'auto-entry-select-all') {
+            AutoPricing.selectedEntries = AutoPricing.selectedEntries || {};
+            var shouldSelectAll = !!target.checked;
+            var boxes = analysisContainer.querySelectorAll('input.auto-entry-select');
+            boxes.forEach(function(box){
+              if (!box || box.disabled) return;
+              var keyBox = box.getAttribute('data-key');
+              if (!keyBox) return;
+              if (shouldSelectAll) {
+                AutoPricing.selectedEntries[String(keyBox)] = true;
+                box.checked = true;
+              } else {
+                delete AutoPricing.selectedEntries[String(keyBox)];
+                box.checked = false;
+              }
+            });
+            syncAutoSelectAllControl();
+            return;
+          }
+          if (!target.classList || !target.classList.contains('auto-entry-select')) return;
           var key = target.getAttribute('data-key');
           if (!key) return;
           AutoPricing.selectedEntries = AutoPricing.selectedEntries || {};
@@ -920,6 +984,7 @@
           } else {
             delete AutoPricing.selectedEntries[String(key)];
           }
+          syncAutoSelectAllControl();
         });
       }
       var viewDataBtn = byId('auto-view-btn-data');
