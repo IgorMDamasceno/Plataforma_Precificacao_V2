@@ -60,7 +60,14 @@ function runIgoalPricingUpdate() {
     if (missingHeaders.length) {
       throw new Error('Colunas obrigatórias ausentes na planilha da Igoal: ' + missingHeaders.join(', '));
     }
-    var syncIdx = headers.indexOf('Sincronizar');
+    var syncIdx = -1;
+    if ('Sincronizar' in idx) {
+      syncIdx = idx['Sincronizar'];
+    } else if ('sincronizar' in idx) {
+      syncIdx = idx['sincronizar'];
+    } else {
+      syncIdx = headers.indexOf('Sincronizar');
+    }
 
     var rowsToSync = [];
     for (var i = 1; i < data.length; i++) {
@@ -80,13 +87,13 @@ function runIgoalPricingUpdate() {
 
     rowsToSync.forEach(function(item) {
       var row = item.row;
-      var dominio = String(row[idx['dominio']] || '').trim();
-      var urlPath = String(row[idx['url']] || '').trim();
-      var companyIdRaw = String(row[idx['company_id']] || '').trim();
-      var priceRuleRaw = row[idx['price_rule']];
+      var dominio = idx.hasOwnProperty('dominio') ? String(row[idx['dominio']] || '').trim() : '';
+      var urlPath = idx.hasOwnProperty('url') ? String(row[idx['url']] || '').trim() : '';
+      var companyIdRaw = idx.hasOwnProperty('company_id') ? String(row[idx['company_id']] || '').trim() : '';
+      var priceRuleRaw = idx.hasOwnProperty('price_rule') ? row[idx['price_rule']] : '';
       var priceRule = normalizeIgoalPrice_(priceRuleRaw);
-      var utmSource = String(row[idx['utm_source']] || '').trim();
-      var bloco = String(row[idx['bloco']] || '').trim();
+      var utmSource = idx.hasOwnProperty('utm_source') ? String(row[idx['utm_source']] || '').trim() : '';
+      var bloco = idx.hasOwnProperty('bloco') ? String(row[idx['bloco']] || '').trim() : '';
 
       if (!dominio || !urlPath || !companyIdRaw || !priceRule) {
         logMessages.push('- ' + (dominio || '(domínio vazio)') + '/' + (urlPath || '(url vazia)') + ': ERRO! Campos obrigatórios ausentes ou inválidos.');

@@ -134,7 +134,21 @@ function ensureAutoPricingLogSheet_() {
 function getHeaderIndexMap_(headers) {
   var map = {};
   for (var i = 0; i < headers.length; i++) {
-    map[String(headers[i]).trim()] = i;
+    var raw = String(headers[i] == null ? '' : headers[i]).trim();
+    if (!raw) continue;
+    if (!(raw in map)) {
+      map[raw] = i;
+    }
+    var lower = raw.toLowerCase();
+    if (!(lower in map)) {
+      map[lower] = i;
+    }
+    if (typeof normalizeHeaderName_ === 'function') {
+      var normalized = normalizeHeaderName_(raw);
+      if (normalized && !(normalized in map)) {
+        map[normalized] = i;
+      }
+    }
   }
   return map;
 }
