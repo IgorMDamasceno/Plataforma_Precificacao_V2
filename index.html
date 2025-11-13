@@ -19,49 +19,199 @@
     .pill { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(71, 85, 105, 0.6); transition: all 0.2s ease-in-out; }
     .pill:hover { background: rgba(51, 65, 85, 0.8); border-color: rgba(100, 116, 139, 0.7); }
     .pricing-table td, .pricing-table th { padding: 8px; }
-    .auto-table-header-controls { display: inline-flex; align-items: center; gap: 0.25rem; }
+    .auto-table-header-controls { display: inline-flex; align-items: center; gap: 0.35rem; }
     .auto-table-sort, .auto-table-filter {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 1.75rem;
+      height: 1.75rem;
       border-radius: 9999px;
-      background-color: transparent;
-      border: 1px solid transparent;
+      background-color: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.25);
       color: #94a3b8;
-      transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+      transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .auto-table-sort:hover, .auto-table-filter:hover {
       color: #e2e8f0;
-      background-color: rgba(148, 163, 184, 0.12);
-      border-color: rgba(148, 163, 184, 0.18);
+      background-color: rgba(148, 163, 184, 0.18);
+      border-color: rgba(148, 163, 184, 0.35);
+      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15);
     }
     .auto-table-sort.active, .auto-table-filter.active {
       color: #38bdf8;
-      border-color: rgba(56, 189, 248, 0.35);
-      background-color: rgba(56, 189, 248, 0.12);
+      border-color: rgba(56, 189, 248, 0.5);
+      background-color: rgba(56, 189, 248, 0.18);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
     .auto-table-sort svg, .auto-table-filter svg { width: 14px; height: 14px; }
     .auto-table-filter-chip {
       display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.3rem;
       font-size: 0.625rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 0.15rem 0.5rem;
+      letter-spacing: 0.08em;
+      padding: 0.2rem 0.6rem;
       border-radius: 9999px;
-      background: rgba(56, 189, 248, 0.1);
+      background: rgba(56, 189, 248, 0.12);
       color: #bae6fd;
       cursor: pointer;
-      border: none;
+      border: 1px solid rgba(56, 189, 248, 0.35);
     }
     .auto-table-filter-chip svg { width: 10px; height: 10px; }
     .auto-table-filter-chip:focus {
       outline: 2px solid rgba(56, 189, 248, 0.35);
       outline-offset: 2px;
     }
+    .analysis-table-wrapper {
+      position: relative;
+      border-radius: 1rem;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: linear-gradient(160deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.9));
+      box-shadow: 0 24px 45px -28px rgba(16, 185, 129, 0.7);
+      overflow: hidden;
+    }
+    .analysis-table-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.22), transparent 55%), radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.2), transparent 55%);
+      opacity: 0.85;
+      pointer-events: none;
+    }
+    .analysis-table-scroller {
+      position: relative;
+      z-index: 1;
+      overflow: auto;
+      padding: 1rem 0.5rem;
+      max-height: 28rem;
+    }
+    @media (min-height: 900px) {
+      .analysis-table-scroller { max-height: 34rem; }
+    }
+    .analysis-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      color: #e2e8f0;
+      font-size: 0.875rem;
+    }
+    .analysis-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      padding: 0.85rem 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #cbd5f5;
+      white-space: nowrap;
+    }
+    .analysis-table thead th:first-child { border-top-left-radius: 0.85rem; }
+    .analysis-table thead th:last-child { border-top-right-radius: 0.85rem; }
+    .analysis-table tbody tr {
+      transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .analysis-table tbody tr:nth-child(even) { background: rgba(15, 23, 42, 0.35); }
+    .analysis-table tbody tr:nth-child(odd) { background: rgba(15, 23, 42, 0.18); }
+    .analysis-table tbody tr:hover {
+      background: rgba(45, 212, 191, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.25);
+      transform: translateY(-1px);
+    }
+    .analysis-table tbody td {
+      padding: 0.95rem 1rem;
+      border-bottom: 1px solid rgba(71, 85, 105, 0.45);
+      vertical-align: middle;
+    }
+    .analysis-table tbody tr:last-child td { border-bottom: none; }
+    .analysis-header-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #cbd5f5;
+    }
+    .analysis-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: rgba(148, 163, 184, 0.18);
+      color: #e2e8f0;
+    }
+    .analysis-tag--utm { background: rgba(129, 140, 248, 0.22); color: #e0e7ff; }
+    .analysis-tag--network { background: rgba(56, 189, 248, 0.2); color: #bae6fd; }
+    .analysis-tag--muted { background: rgba(71, 85, 105, 0.25); color: #cbd5f5; }
+    .analysis-url {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 600;
+      color: #f8fafc;
+      word-break: break-all;
+    }
+    .analysis-url span { max-width: 26rem; display: inline-block; }
+    @media (max-width: 1024px) {
+      .analysis-url span { max-width: 18rem; }
+    }
+    .analysis-text-secondary { color: #cbd5f5; font-size: 0.85rem; }
+    .analysis-metric {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .analysis-metric--requests { color: #facc15; }
+    .analysis-metric--coverage { color: #38bdf8; }
+    .analysis-metric--ecpm { color: #f8fafc; }
+    .analysis-metric--coefficient { color: #f0abfc; }
+    .analysis-value {
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      padding: 0.3rem 0.7rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.65);
+    }
+    .analysis-value--current {
+      color: #cbd5f5;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+    .analysis-value--target {
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      background: rgba(16, 185, 129, 0.18);
+      box-shadow: 0 14px 28px -22px rgba(16, 185, 129, 0.9);
+    }
+    .analysis-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: none;
+    }
+    .analysis-status-pill--success { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; box-shadow: 0 10px 25px -18px rgba(16, 185, 129, 0.85); }
+    .analysis-status-pill--info { background: rgba(56, 189, 248, 0.22); color: #bae6fd; }
+    .analysis-status-pill--warning { background: rgba(245, 158, 11, 0.22); color: #fcd34d; }
+    .analysis-status-pill--muted { background: rgba(148, 163, 184, 0.22); color: #e2e8f0; }
+    .analysis-muted { color: #94a3b8; }
     .auto-filter-popover {
       position: absolute;
       z-index: 80;
@@ -747,19 +897,24 @@
     }
 
     function describeAutoPricingStatus(entry){
-      if (!entry) return { label: '—', className: 'text-slate-300' };
+      if (!entry) {
+        return { label: '—', className: 'analysis-status-pill analysis-status-pill--muted' };
+      }
       if (entry.shouldUpdate) {
         var bucketLabel = entry.bucketRule != null ? money(entry.bucketRule) : '—';
-        return { label: 'Atualizar para ' + bucketLabel, className: 'text-emerald-400 font-semibold' };
+        return { label: 'Atualizar para ' + bucketLabel, className: 'analysis-status-pill analysis-status-pill--success' };
       }
       if (entry.canSelect !== false && entry.bucketRule != null) {
-        var manualLabel = entry.reason ? (escapeHtml(entry.reason) + ' — disponível para forçar') : 'Disponível para atualização manual';
-        return { label: manualLabel, className: 'text-sky-300' };
+        var manualReason = entry.reason ? String(entry.reason) : '';
+        var manualLabel = manualReason ? (manualReason + ' — disponível para forçar') : 'Disponível para atualização manual';
+        return { label: manualLabel, className: 'analysis-status-pill analysis-status-pill--info' };
       }
       if (!entry.eligible) {
-        return { label: escapeHtml(entry.reason || 'Não elegível'), className: 'text-amber-300' };
+        var blockedReason = entry.reason ? String(entry.reason) : 'Não elegível';
+        return { label: blockedReason, className: 'analysis-status-pill analysis-status-pill--warning' };
       }
-      return { label: escapeHtml(entry.reason || 'Sem alteração'), className: 'text-slate-300' };
+      var defaultReason = entry.reason ? String(entry.reason) : 'Sem alteração';
+      return { label: defaultReason, className: 'analysis-status-pill analysis-status-pill--muted' };
     }
 
     function parseAutoNumericValue(value){
@@ -882,79 +1037,99 @@
       {
         key: 'site',
         label: 'Site',
-        headerClass: 'text-left font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-slate-200',
+        headerClass: 'text-left py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-sm text-slate-50 font-semibold',
         sortable: true,
         filterable: true,
         type: 'text',
         getValue: function(row){ return row.site; },
         getSortValue: function(row){ return (row.site || '').toLowerCase(); },
-        render: function(row){ return escapeHtml(row.site || ''); },
+        render: function(row){
+          var value = row.site || '';
+          if (!value) return '<span class="analysis-muted">—</span>';
+          return '<span class="text-slate-50 font-semibold">'+escapeHtml(value)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.site || ''; }
       },
       {
         key: 'utm_source',
         label: 'utm_source',
-        headerClass: 'text-left font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-slate-300',
+        headerClass: 'text-left py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3',
         sortable: true,
         filterable: true,
         type: 'text',
         getValue: function(row){ return row.utm_source; },
         getSortValue: function(row){ return (row.utm_source || '').toLowerCase(); },
-        render: function(row){ return escapeHtml(row.utm_source || ''); },
+        render: function(row){
+          if (!row.utm_source) return '<span class="analysis-tag analysis-tag--muted">—</span>';
+          return '<span class="analysis-tag analysis-tag--utm">'+escapeHtml(row.utm_source)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.utm_source || ''; }
       },
       {
         key: 'network',
         label: 'Rede',
-        headerClass: 'text-left font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-slate-300',
+        headerClass: 'text-left py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3',
         sortable: true,
         filterable: true,
         type: 'text',
         getValue: function(row){ return row.network || ''; },
         getSortValue: function(row){ return (row.network || '').toLowerCase(); },
-        render: function(row){ return escapeHtml(row.networkDisplay || '—'); },
+        render: function(row){
+          var display = row.networkDisplay || '';
+          if (!display || display === '—') return '<span class="analysis-tag analysis-tag--muted">—</span>';
+          return '<span class="analysis-tag analysis-tag--network">'+escapeHtml(display)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.networkDisplay || ''; }
       },
       {
         key: 'adunit',
         label: 'Bloco',
-        headerClass: 'text-left font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-slate-300',
+        headerClass: 'text-left py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3',
         sortable: true,
         filterable: true,
         type: 'text',
         getValue: function(row){ return row.adunit; },
         getSortValue: function(row){ return (row.adunit || '').toLowerCase(); },
-        render: function(row){ return escapeHtml(row.adunit || ''); },
+        render: function(row){
+          if (!row.adunit) return '<span class="analysis-muted">—</span>';
+          return '<span class="analysis-text-secondary">'+escapeHtml(row.adunit)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.adunit || ''; }
       },
       {
         key: 'url',
         label: 'URL',
-        headerClass: 'text-left font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-slate-300',
+        headerClass: 'text-left py-3 px-4 align-middle',
+        cellClass: 'px-4 py-3',
         sortable: true,
         filterable: true,
         type: 'text',
         getValue: function(row){ return row.url; },
         getSortValue: function(row){ return (row.url || '').toLowerCase(); },
-        render: function(row){ return escapeHtml(row.url || ''); },
+        render: function(row){
+          var value = row.url || '';
+          if (!value) return '<span class="analysis-muted">—</span>';
+          return '<div class="analysis-url"><span>'+escapeHtml(value)+'</span></div>';
+        },
         getFilterDisplay: function(row){ return row.url || ''; }
       },
       {
         key: 'requests',
         label: 'Solicitações',
-        headerClass: 'text-right font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-right',
+        headerClass: 'text-right py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-right',
         sortable: true,
         filterable: true,
         type: 'number',
         getValue: function(row){ return row.requestsNumber; },
         getSortValue: function(row){ return row.requestsNumber; },
-        render: function(row){ return row.formattedRequests; },
+        render: function(row){
+          return '<span class="analysis-metric analysis-metric--requests">'+escapeHtml(row.formattedRequests || '—')+'</span>';
+        },
         getFilterDisplay: function(row){ return row.formattedRequests; },
         matchesFilter: function(row, filter){ return matchesAutoNumericFilter(row.requestsNumber, filter, this, row); },
         filterHint: 'Use >, >=, <, <= ou = para comparar valores. Ex.: ">= 1200"'
@@ -962,14 +1137,16 @@
       {
         key: 'coverage',
         label: 'Cobertura',
-        headerClass: 'text-right font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-right',
+        headerClass: 'text-right py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-right',
         sortable: true,
         filterable: true,
         type: 'number',
         getValue: function(row){ return row.coverageNumber; },
         getSortValue: function(row){ return row.coverageNumber; },
-        render: function(row){ return row.formattedCoverage; },
+        render: function(row){
+          return '<span class="analysis-metric analysis-metric--coverage">'+escapeHtml(row.formattedCoverage || '—')+'</span>';
+        },
         getFilterDisplay: function(row){ return row.formattedCoverage; },
         matchesFilter: function(row, filter){ return matchesAutoNumericFilter(row.coverageNumber, filter, this, row); },
         filterHint: 'Ex.: ">= 80" para coberturas acima de 80%'
@@ -977,14 +1154,16 @@
       {
         key: 'ecpm',
         label: 'eCPM',
-        headerClass: 'text-right font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-right',
+        headerClass: 'text-right py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-right',
         sortable: true,
         filterable: true,
         type: 'number',
         getValue: function(row){ return row.ecpmNumber; },
         getSortValue: function(row){ return row.ecpmNumber; },
-        render: function(row){ return row.formattedEcpm; },
+        render: function(row){
+          return '<span class="analysis-metric analysis-metric--ecpm">'+escapeHtml(row.formattedEcpm || '—')+'</span>';
+        },
         getFilterDisplay: function(row){ return row.formattedEcpm; },
         matchesFilter: function(row, filter){ return matchesAutoNumericFilter(row.ecpmNumber, filter, this, row); },
         filterHint: 'Informe valores em dólar. Ex.: "> 5"'
@@ -992,14 +1171,16 @@
       {
         key: 'coefficient',
         label: 'Coeficiente',
-        headerClass: 'text-right font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-right',
+        headerClass: 'text-right py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-right',
         sortable: true,
         filterable: true,
         type: 'number',
         getValue: function(row){ return row.coefficientNumber; },
         getSortValue: function(row){ return row.coefficientNumber; },
-        render: function(row){ return row.formattedCoefficient; },
+        render: function(row){
+          return '<span class="analysis-metric analysis-metric--coefficient">'+escapeHtml(row.formattedCoefficient || '—')+'</span>';
+        },
         getFilterDisplay: function(row){ return row.formattedCoefficient; },
         matchesFilter: function(row, filter){ return matchesAutoNumericFilter(row.coefficientNumber, filter, this, row); },
         filterHint: 'Use operadores para refinar. Ex.: "< 0,8"'
@@ -1007,14 +1188,18 @@
       {
         key: 'currentRule',
         label: 'Regra atual',
-        headerClass: 'text-right font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-right',
+        headerClass: 'text-right py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-right',
         sortable: true,
         filterable: true,
         type: 'number',
         getValue: function(row){ return row.currentRuleNumber; },
         getSortValue: function(row){ return row.currentRuleNumber; },
-        render: function(row){ return row.formattedCurrentRule; },
+        render: function(row){
+          var value = row.formattedCurrentRule;
+          if (!value || value === '—') return '<span class="analysis-muted">—</span>';
+          return '<span class="analysis-value analysis-value--current">'+escapeHtml(value)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.formattedCurrentRule; },
         matchesFilter: function(row, filter){ return matchesAutoNumericFilter(row.currentRuleNumber, filter, this, row); },
         filterHint: 'Compare valores em dólar. Ex.: "= 2500"'
@@ -1022,14 +1207,18 @@
       {
         key: 'newRule',
         label: 'Nova regra',
-        headerClass: 'text-right font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2 text-right',
+        headerClass: 'text-right py-3 px-4 align-middle whitespace-nowrap',
+        cellClass: 'px-4 py-3 text-right',
         sortable: true,
         filterable: true,
         type: 'number',
         getValue: function(row){ return row.newRuleNumber; },
         getSortValue: function(row){ return row.newRuleNumber; },
-        render: function(row){ return row.formattedNewRule; },
+        render: function(row){
+          var value = row.formattedNewRule;
+          if (!value || value === '—') return '<span class="analysis-muted">—</span>';
+          return '<span class="analysis-value analysis-value--target">'+escapeHtml(value)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.formattedNewRule; },
         matchesFilter: function(row, filter){ return matchesAutoNumericFilter(row.newRuleNumber, filter, this, row); },
         filterHint: 'Ex.: "<= 1800"'
@@ -1037,14 +1226,18 @@
       {
         key: 'status',
         label: 'Status',
-        headerClass: 'text-left font-semibold py-2 px-2 align-top',
-        cellClass: 'py-2 px-2',
+        headerClass: 'text-left py-3 px-4 align-middle',
+        cellClass: 'px-4 py-3',
         sortable: true,
         filterable: true,
         type: 'text',
         getValue: function(row){ return row.statusLabel || ''; },
         getSortValue: function(row){ return (row.statusLabel || '').toLowerCase(); },
-        render: function(row){ return '<span class="'+escapeHtml(row.statusClassName || '')+'">'+escapeHtml(row.statusLabel || '—')+'</span>'; },
+        render: function(row){
+          var classes = row.statusClassName || 'analysis-status-pill analysis-status-pill--muted';
+          var label = row.statusLabel || '—';
+          return '<span class="'+escapeHtml(classes)+'">'+escapeHtml(label)+'</span>';
+        },
         getFilterDisplay: function(row){ return row.statusLabel || ''; }
       }
     ];
@@ -1095,7 +1288,7 @@
         formattedCurrentRule: isFinite(currentRuleNumber) ? money(currentRuleNumber) : '—',
         formattedNewRule: isFinite(newRuleNumber) ? money(newRuleNumber) : '—',
         statusLabel: status && status.label ? status.label : '—',
-        statusClassName: status && status.className ? status.className : 'text-slate-300'
+        statusClassName: status && status.className ? status.className : 'analysis-status-pill analysis-status-pill--muted'
       };
     }
 
@@ -1218,10 +1411,10 @@
       var columns = [];
       columns.push({
         key: 'selection',
-        headerClass: 'text-center font-semibold py-2 px-2 align-top w-24',
-        cellClass: 'py-2 px-2 text-center align-middle',
+        headerClass: 'text-center py-3 px-4 align-middle w-28 text-slate-200',
+        cellClass: 'px-4 py-3 text-center align-middle',
         renderHeader: function(){
-          return '<div class="flex flex-col items-center gap-1 text-[11px] leading-tight text-slate-300"><span class="uppercase tracking-wide">Selecionar</span><input type="checkbox" id="auto-entry-select-all" class="h-4 w-4 text-emerald-500 rounded border-slate-600 bg-slate-800" aria-label="Selecionar todas as URLs" /></div>';
+          return '<div class="flex flex-col items-center gap-2 text-[0.65rem] uppercase tracking-[0.22em] text-slate-200"><span>Selecionar</span><input type="checkbox" id="auto-entry-select-all" class="h-4 w-4 text-emerald-500 rounded border-slate-600 bg-slate-800" aria-label="Selecionar todas as URLs" /></div>';
         },
         renderCell: function(row){
           var attrs = ['type="checkbox"', 'class="auto-entry-select h-4 w-4 text-emerald-500 rounded border-slate-600 bg-slate-800"', 'data-key="'+escapeHtml(row.key || '')+'"', 'aria-label="Selecionar URL"'];
@@ -1242,8 +1435,8 @@
           key: def.key,
           sortable: !!def.sortable,
           filterable: !!def.filterable,
-          headerClass: (def.headerClass || 'text-left font-semibold py-2 px-2 align-top') + ' relative',
-          cellClass: def.cellClass || 'py-2 px-2',
+          headerClass: (def.headerClass || 'text-left py-3 px-4 align-middle') + ' relative',
+          cellClass: def.cellClass || 'px-4 py-3',
           renderHeader: function(){
             var sortDir = getAutoSortDirection(def.key);
             var filterValue = Object.prototype.hasOwnProperty.call(filters, def.key) ? filters[def.key] : '';
@@ -1258,7 +1451,7 @@
             if (filterValue) {
               chip = '<button type="button" class="auto-table-filter-chip" data-filter-clear="'+def.key+'" title="Limpar filtro"><span>'+escapeHtml(filterValue)+'</span>'+getAutoFilterChipIcon()+'</button>';
             }
-            return '<div class="flex items-start justify-between gap-2"><span>'+escapeHtml(def.label)+'</span>'+(controls ? '<div class="auto-table-header-controls">'+controls+'</div>' : '')+'</div>'+(chip ? '<div class="mt-1">'+chip+'</div>' : '');
+            return '<div class="flex items-start justify-between gap-2"><span class="analysis-header-label">'+escapeHtml(def.label)+'</span>'+(controls ? '<div class="auto-table-header-controls">'+controls+'</div>' : '')+'</div>'+(chip ? '<div class="mt-1">'+chip+'</div>' : '');
           },
           renderCell: function(row){ return def.render(row); },
           getSortValue: def.getSortValue,
@@ -1348,7 +1541,7 @@
         if (!filteredRows.length) {
           bodyHtml = '<tr><td colspan="'+columns.length+'" class="py-6 px-4 text-center text-sm text-slate-400">Nenhum resultado corresponde aos filtros atuais.</td></tr>';
         }
-        var detailHtml = '<div class="pt-4 border-t border-slate-700/50 space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><h4 class="text-sm font-semibold text-slate-200">Detalhe por URL</h4><p class="text-xs text-slate-400">Marque as URLs que deseja sincronizar manualmente.</p></div><div class="overflow-auto"><table class="w-full text-sm pricing-table"><thead class="text-slate-400"><tr>'+headerHtml+'</tr></thead><tbody>'+bodyHtml+'</tbody></table></div></div>';
+        var detailHtml = '<div class="pt-4 border-t border-slate-700/50 space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><h4 class="text-sm font-semibold text-slate-200">Detalhe por URL</h4><p class="text-xs text-slate-400">Marque as URLs que deseja sincronizar manualmente.</p></div><div class="analysis-table-wrapper"><div class="analysis-table-scroller"><table class="analysis-table w-full text-sm pricing-table"><thead class="text-slate-400"><tr>'+headerHtml+'</tr></thead><tbody>'+bodyHtml+'</tbody></table></div></div></div>';
         utmContainer.innerHTML = detailHtml;
         syncAutoSelectAllControl();
       }
