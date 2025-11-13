@@ -205,6 +205,10 @@ function parseCoverageValue_(val) {
 }
 
 function formatPriceRuleIgoal_(value) {
+  if (typeof normalizeIgoalPrice_ === 'function') {
+    var normalized = normalizeIgoalPrice_(value);
+    return normalized != null ? String(normalized) : '';
+  }
   if (value === null || value === undefined) return '';
   var s = String(value).trim();
   if (!s) return '';
@@ -215,6 +219,11 @@ function formatPriceRuleIgoal_(value) {
 }
 
 function formatPriceRuleAdSeleto_(value) {
+  if (typeof normalizePmdPrice_ === 'function') {
+    var normalized = normalizePmdPrice_(value);
+    if (normalized == null || isNaN(normalized)) return '';
+    return Number(normalized).toFixed(2);
+  }
   if (value === null || value === undefined) return '';
   var s = String(value).trim();
   if (!s) return '';
@@ -1530,6 +1539,11 @@ function runAutoPricing(params) {
   }
 
   var ruleContexts = plan.ruleContexts || {};
+  var triggeredNetworks = {};
+  updates.forEach(function(entry){
+    if (!entry || !entry.normNetwork) return;
+    triggeredNetworks[entry.normNetwork] = true;
+  });
   var tz = Session.getScriptTimeZone();
   var timestamp = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
   var logSheet = ensureAutoPricingLogSheet_();
@@ -1581,11 +1595,50 @@ function runAutoPricing(params) {
     range.setValues(payload);
   }
 
+  var syncSummaries = [];
+  function pushSyncSummary(label, result) {
+    var header = '[' + label + '] ';
+    if (!result) {
+      syncSummaries.push(header + 'Sincronização concluída.');
+      return;
+    }
+    var ok = result.ok !== false;
+    var message = typeof result.message === 'string' ? result.message : '';
+    if (!message) {
+      message = ok ? 'Sincronização concluída.' : 'Falha ao sincronizar.';
+    }
+    syncSummaries.push(header + (ok ? 'OK' : 'ERRO') + '\n' + message);
+  }
+
+  function runNetworkSync(label, fn) {
+    if (typeof fn !== 'function') {
+      syncSummaries.push('[' + label + '] Função de sincronização indisponível.');
+      return;
+    }
+    try {
+      var result = fn();
+      pushSyncSummary(label, result);
+    } catch (err) {
+      syncSummaries.push('[' + label + '] ERRO\n' + (err && err.message ? err.message : 'Falha desconhecida.'));
+    }
+  }
+
+  if (triggeredNetworks['adseleto']) {
+    runNetworkSync('AdSeleto', runAdSeletoPricingUpdate);
+  }
+  if (triggeredNetworks['igoal']) {
+    runNetworkSync('Igoal', runIgoalPricingUpdate);
+  }
+
   var refreshed = computeAutoPricingPlan_(params);
+  var baseMessage = 'Precificação aplicada para ' + logRows.length + ' itens.';
+  if (syncSummaries.length) {
+    baseMessage += '\n\n' + syncSummaries.join('\n\n');
+  }
   return {
     ok: true,
     updated: logRows.length,
-    message: 'Precificação aplicada para ' + logRows.length + ' itens.',
+    message: baseMessage,
     state: planToState_(refreshed)
   };
 }
